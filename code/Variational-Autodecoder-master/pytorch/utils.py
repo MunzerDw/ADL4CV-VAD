@@ -181,10 +181,10 @@ def load_mnist(args, fname_start):
         print(fname)
 
         with h5py.File(fname, 'r') as f:
-            train_data = f['train_x'][:]
+            train_data = f['train_x'][:1]
             train_mask = np.ones_like(train_data)
 
-            test_data = f['test_x'][:]
+            test_data = f['test_x'][:8]
             test_mask = np.ones_like(test_data)
             test_true = test_data
 
