@@ -39,7 +39,7 @@ def write_text_to_image(array, text):
     img = Image.fromarray(array)
     img = ImageOps.expand(img, (40, 20, 0, 0), fill=(255, 255, 255))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("exercise_3/util/font/FreeMono.ttf", 14)
+    font = ImageFont.truetype("EPNVAD/util/font/FreeMono.ttf", 14)
     draw.text((10, 10), text, (0, 0, 0), font=font)
     return np.array(img)
 

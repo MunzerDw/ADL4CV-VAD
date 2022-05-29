@@ -3,8 +3,8 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.distributions as dist
-from exercise_3.model.threedepn import ThreeDEPNDecoder
-from exercise_3.data.shapenet import ShapeNet
+from model.threedepn import ThreeDEPNDecoder
+from data.shapenet import ShapeNet
 
 
 def train(model, train_dataloader, val_dataloader, latent_vectors, latent_log_var, device, config):
@@ -85,9 +85,9 @@ def train(model, train_dataloader, val_dataloader, latent_vectors, latent_log_va
                       f' kl_loss: {kl_loss_running/ config["print_every_n"]:.6f} normal_loss: {init_loss_running/config["print_every_n"]:.6f}')
 
                 if train_loss < best_loss:
-                    torch.save(model.state_dict(), f'exercise_3/runs/{config["experiment_name"]}/model_best.ckpt')
-                    torch.save(latent_vectors, f'exercise_3/runs/{config["experiment_name"]}/latent_best.pt')
-                    torch.save(latent_log_var, f'exercise_3/runs/{config["experiment_name"]}/log_var_best.pt')
+                    torch.save(model.state_dict(), f'runs/{config["experiment_name"]}/model_best.ckpt')
+                    torch.save(latent_vectors, f'runs/{config["experiment_name"]}/latent_best.pt')
+                    torch.save(latent_log_var, f'runs/{config["experiment_name"]}/log_var_best.pt')
                     best_loss = train_loss
                 train_loss_running = 0.
                 init_loss_running = 0.
@@ -157,7 +157,7 @@ def main(config):
     latent_log_var = torch.zeros(len(train_dataset), config['latent_code_length'], device=device)
     latent_log_var.requires_grad = config['vad_free']
     # Create folder for saving checkpoints
-    Path(f'exercise_3/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+    Path(f'runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Start training
     train(model, train_dataloader, val_dataloader, latent_vectors, latent_log_var, device, config)

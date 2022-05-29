@@ -3,8 +3,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from exercise_3.model.threedepn import ThreeDEPN
-from exercise_3.data.shapenet import ShapeNet
+from EPNVAD.model.threedepn import ThreeDEPN
+from EPNVAD.data.shapenet import ShapeNet
 
 
 def train(model, train_dataloader, val_dataloader, device, config):
@@ -72,7 +72,7 @@ def train(model, train_dataloader, val_dataloader, device, config):
 
                 loss_val /= len(val_dataloader)
                 if loss_val < best_loss_val:
-                    torch.save(model.state_dict(), f'exercise_3/runs/{config["experiment_name"]}/model_best.ckpt')
+                    torch.save(model.state_dict(), f'EPNVAD/runs/{config["experiment_name"]}/model_best.ckpt')
                     best_loss_val = loss_val
 
                 print(f'[{epoch:03d}/{batch_idx:05d}] val_loss: {loss_val:.6f} | best_loss_val: {best_loss_val:.6f}')
@@ -138,7 +138,7 @@ def main(config):
     model.to(device)
 
     # Create folder for saving checkpoints
-    Path(f'exercise_3/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+    Path(f'EPNVAD/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Start training
     train(model, train_dataloader, val_dataloader, device, config)

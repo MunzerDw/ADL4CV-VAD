@@ -2,9 +2,9 @@ from pathlib import Path
 
 import torch
 
-from exercise_3.model.deepsdf import DeepSDFDecoder
-from exercise_3.data.shape_implicit import ShapeImplicit
-from exercise_3.util.misc import evaluate_model_on_grid
+from EPNVAD.model.deepsdf import DeepSDFDecoder
+from EPNVAD.data.shape_implicit import ShapeImplicit
+from EPNVAD.util.misc import evaluate_model_on_grid
 
 
 def train(model, latent_vectors, train_dataloader, device, config):
@@ -86,8 +86,8 @@ def train(model, latent_vectors, train_dataloader, device, config):
 
                 # save best train model and latent codes
                 if train_loss < best_loss:
-                    torch.save(model.state_dict(), f'exercise_3/runs/{config["experiment_name"]}/model_best.ckpt')
-                    torch.save(latent_vectors.state_dict(), f'exercise_3/runs/{config["experiment_name"]}/latent_best.ckpt')
+                    torch.save(model.state_dict(), f'EPNVAD/runs/{config["experiment_name"]}/model_best.ckpt')
+                    torch.save(latent_vectors.state_dict(), f'EPNVAD/runs/{config["experiment_name"]}/latent_best.ckpt')
                     best_loss = train_loss
 
                 train_loss_running = 0.
@@ -99,7 +99,7 @@ def train(model, latent_vectors, train_dataloader, device, config):
                 latent_vectors_for_vis = latent_vectors(torch.LongTensor(range(min(5, latent_vectors.num_embeddings))).to(device))
                 for latent_idx in range(latent_vectors_for_vis.shape[0]):
                     # create mesh and save to disk
-                    evaluate_model_on_grid(model, latent_vectors_for_vis[latent_idx, :], device, 64, f'exercise_3/runs/{config["experiment_name"]}/meshes/{iteration:05d}_{latent_idx:03d}.obj')
+                    evaluate_model_on_grid(model, latent_vectors_for_vis[latent_idx, :], device, 64, f'EPNVAD/runs/{config["experiment_name"]}/meshes/{iteration:05d}_{latent_idx:03d}.obj')
                 # set model back to train
                 model.train()
 
@@ -160,7 +160,7 @@ def main(config):
     latent_vectors.to(device)
 
     # Create folder for saving checkpoints
-    Path(f'exercise_3/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+    Path(f'EPNVAD/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Start training
     train(model, latent_vectors, train_dataloader, device, config)

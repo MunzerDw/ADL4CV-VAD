@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from skimage.measure import marching_cubes
 
-from exercise_3.model.threedepn import ThreeDEPN
+from EPNVAD.model.threedepn import ThreeDEPN
 
 
 class InferenceHandler3DEPN:

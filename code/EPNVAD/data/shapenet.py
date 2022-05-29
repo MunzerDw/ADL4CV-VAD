@@ -8,8 +8,8 @@ import torch
 class ShapeNet(torch.utils.data.Dataset):
     num_classes = 8
     #dataset_sdf_path = Path("exercise_3/data/shapenet_dim32_sdf")  # path to voxel data
-    dataset_df_path = Path("exercise_3/data/shapenet_dim32_df")  # path to voxel data
-    class_name_mapping = json.loads(Path("exercise_3/data/shape_info.json").read_text())  # mapping for ShapeNet ids -> names
+    dataset_df_path = Path("data/shapenet_dim32_df")  # path to voxel data
+    class_name_mapping = json.loads(Path("data/shape_info.json").read_text())  # mapping for ShapeNet ids -> names
     classes = sorted(class_name_mapping.keys())
 
     def __init__(self, split):
@@ -17,7 +17,7 @@ class ShapeNet(torch.utils.data.Dataset):
         assert split in ['train', 'val', 'overfit']
         self.truncation_distance = 3
 
-        self.items = Path(f"exercise_3/data/splits/shapenet/{split}.txt").read_text().splitlines()  # keep track of shapes based on split
+        self.items = Path(f"data/splits/shapenet/{split}.txt").read_text().splitlines()  # keep track of shapes based on split
 
     def __getitem__(self, index):
         sdf_id, df_id = self.items[index].split(' ')
