@@ -64,7 +64,7 @@ def train(model, latent_vectors, latent_log_var, train_dataloader, device, confi
 
             # get latent codes corresponding to batch shapes
             # expand so that we have an appropriate latent vector per sdf sample
-            Dist = dist.Normal(latent_vectors[batch['indices']], 1)
+            Dist = dist.Normal(latent_vectors[batch['indices']], torch.exp(latent_log_var[batch['indices']]))
             x_vad = Dist.rsample()
             batch_x_vad = x_vad.unsqueeze(1).expand(-1, batch['points'].shape[1], -1)
             batch_x_vad = batch_x_vad.reshape((num_points_per_batch, config['latent_code_length']))
@@ -86,7 +86,7 @@ def train(model, latent_vectors, latent_log_var, train_dataloader, device, confi
             predicted_sdf = torch.clamp(predicted_sdf, min=-0.1, max=0.1)
 
             # compute loss
-            q_z = dist.Normal(0, 1)
+            q_z = dist.Normal(torch.zeros(size=latent_vectors[batch['indices']].size()), torch.ones(size=latent_log_var[batch['indices']].size()))
             loss = loss_criterion(predicted_sdf, sdf)
             kl_loss = torch.mean(dist.kl_divergence(Dist,q_z))
             kl_loss /= config['batch_size']

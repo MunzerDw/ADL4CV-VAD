@@ -61,7 +61,7 @@ class DeepSDFVAD(nn.Module):
         super().__init__()
         dropout_prob = 0.2
         self.layer1 = nn.Sequential(
-            nn.utils.weight_norm(nn.Linear(259, 512), name='weight'),
+            nn.utils.weight_norm(nn.Linear(latent_size + 3, 512), name='weight'),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
             nn.utils.weight_norm(nn.Linear(512, 512), name='weight'),
@@ -75,7 +75,7 @@ class DeepSDFVAD(nn.Module):
             nn.ReLU()
         )
         self.layer2 = nn.Sequential(
-            nn.utils.weight_norm(nn.Linear(512, 512), name='weight'),
+            nn.utils.weight_norm(nn.Linear(253 + latent_size + 3, 512), name='weight'),
             nn.Dropout(dropout_prob),
             nn.ReLU(),
             nn.utils.weight_norm(nn.Linear(512, 512), name='weight'),
