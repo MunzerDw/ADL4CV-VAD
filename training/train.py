@@ -147,9 +147,9 @@ def main(config):
     # Load model if resuming from checkpoint
     if config['resume_ckpt'] is not None:
         print('Loading saved model, latent codes, and latent variances...')
-        model.load_state_dict(torch.load(f"runs/{config['resume_ckpt']}/model_best.ckpt", map_location='cpu'))
-        latent_vectors = torch.load(f"runs/{config['resume_ckpt']}/latent_best.pt", map_location = 'cpu')
-        latent_log_var = torch.load(f"runs/{config['resume_ckpt']}/log_var_best.pt", map_location = 'cpu')
+        model.load_state_dict(torch.load(f"runs/{config['resume_ckpt']}/model_best.ckpt", map_location=config['device']))
+        latent_vectors = torch.load(f"runs/{config['resume_ckpt']}/latent_best.pt", map_location = config['device'])
+        latent_log_var = torch.load(f"runs/{config['resume_ckpt']}/log_var_best.pt", map_location = config['device'])
 
     # Move model to specified device
     model.to(device)
