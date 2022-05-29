@@ -1,13 +1,18 @@
 from pathlib import Path
 
-import numpy as np
 import torch
 import torch.distributions as dist
 from model.threedepn import ThreeDEPNDecoder
 from data.shapenet import ShapeNet
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 def train(model, train_dataloader, latent_vectors, latent_log_var, device, config):
+    # Initialize logger
+    logger = TensorBoardLogger("logs", name=config['experiment_name'])
+    logger.log_graph(model)
+    logger.log_hyperparams(config)
+    
     # Define loss
     reconstruction_loss_criterion = torch.nn.SmoothL1Loss()
     reconstruction_loss_criterion.to(device)
@@ -81,12 +86,20 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             train_loss_running += loss.item()
             reconstruction_loss_running += reconstruction_loss.item()
             kl_loss_running += kl_loss.item()
-            iteration = epoch * len(train_dataloader) + batch_idx
+            # iteration = epoch * len(train_dataloader) + batch_idx
 
-            if iteration % config['print_every_n'] == (config['print_every_n'] - 1):
-                train_loss = train_loss_running / config["print_every_n"]
-                print(f'[{epoch:03d}/{batch_idx:05d}] train_loss: {train_loss_running / config["print_every_n"]:.6f}'
-                      f' kl_loss: {kl_loss_running/ config["print_every_n"]:.6f} normal_loss: {reconstruction_loss_running/config["print_every_n"]:.6f}')
+            # if iteration % config['print_every_n'] == (config['print_every_n'] - 1):
+            if batch_idx == len(train_dataloader) - 1:
+                samples_per_epoch = config["batch_size"] * len(train_dataloader)
+                train_loss = train_loss_running / samples_per_epoch
+                print(f"[{(epoch + 1):03d}/{config['max_epochs']:05d}] train_loss: {train_loss_running / samples_per_epoch:.6f}"
+                      f' kl_loss: {kl_loss_running/ samples_per_epoch:.6f} normal_loss: {reconstruction_loss_running / samples_per_epoch:.6f}')
+                logger.log_metrics({
+                    'train_loss': train_loss_running / samples_per_epoch,
+                    'kl_loss': kl_loss_running/ samples_per_epoch,
+                    'reconstruction_loss': reconstruction_loss_running / samples_per_epoch,
+                    'epoch': epoch + 1
+                }, epoch + 1)
                 train_loss_running = 0.
                 reconstruction_loss_running = 0.
                 kl_loss_running = 0.
