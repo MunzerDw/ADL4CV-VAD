@@ -12,33 +12,29 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
     reconstruction_loss_criterion = torch.nn.SmoothL1Loss()
     reconstruction_loss_criterion.to(device)
 
-    # Define Optimizers
+    # Define params
+    params = [
+        {
+            'params': latent_vectors,
+            'lr': config['learning_rate_code']
+        }
+    ]
     if config['vad_free']:
-        optimizer = torch.optim.Adam([
-            {
-                'params': model.parameters(),
-                'lr': config['learning_rate_model']
-            },
-            {
-                'params': latent_vectors,
-                'lr': config['learning_rate_code']
-            },
-            {
-                'params': latent_log_var,
-                'lr': config['learning_rate_log_var']
-            }
-        ])
-    else:
-        optimizer = torch.optim.Adam([
-            {
-                'params': model.parameters(),
-                'lr': config['learning_rate_model']
-            },
-            {
-                'params': latent_vectors,
-                'lr': config['learning_rate_code']
-            }
-        ])
+        params.append({
+            'params': latent_log_var,
+            'lr': config['learning_rate_log_var']
+        })
+    
+    if config['test'] is False:
+        params.append({
+            'params': model.parameters(),
+            'lr': config['learning_rate_model']
+        })
+
+    print(f'Training params: {len(params)}')
+
+    # Define Optimizers
+    optimizer = torch.optim.Adam(params)
 
     # Here, we follow the original implementation to also use a learning rate scheduler -- it simply reduces the learning rate to half every 20 epochs
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
@@ -137,6 +133,7 @@ def main(config):
 
     # Load model if resuming from checkpoint
     if config['resume_ckpt'] is not None:
+        print('Loading saved model, latent codes, and latent variances...')
         model.load_state_dict(torch.load(f"runs/{config['resume_ckpt']}/model_best.ckpt", map_location='cpu'))
         latent_vectors = torch.load(f"runs/{config['resume_ckpt']}/latent_best.pt", map_location = 'cpu')
         latent_log_var = torch.load(f"runs/{config['resume_ckpt']}/log_var_best.pt", map_location = 'cpu')
