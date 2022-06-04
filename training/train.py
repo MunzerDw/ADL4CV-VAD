@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import torch
@@ -5,6 +6,19 @@ import torch.distributions as dist
 from model.threedepn import ThreeDEPNDecoder
 from data.shapenet import ShapeNet
 from pytorch_lightning.loggers import TensorBoardLogger
+
+# Task Introduction
+# Related Work
+# - talk about deepsdf and why it doesnt work
+# Method
+# - explain the method and our model
+# Experiments
+# - AD (interpolation, reconstruction, random vector)
+# - VAD (inter-class interpolation, intra-class interpolation, generation of new samples from learned distributions)
+# Conclusion
+# - what are the new contributions?
+# Next steps
+# ...next steps (more experiments, try increase model capactity, write report)
 
 
 def train(model, train_dataloader, latent_vectors, latent_log_var, device, config):
@@ -23,7 +37,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             'lr': config['learning_rate_code']
         }
     ]
-    if config['vad_free']:
+    if config['vad_free'] and config['decoder_var']:
         params.append({
             'params': latent_log_var,
             'lr': config['learning_rate_log_var']
@@ -41,7 +55,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
     optimizer = torch.optim.Adam(params)
 
     # Here, we follow the original implementation to also use a learning rate scheduler -- it simply reduces the learning rate to half every 20 epochs
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config['scheduler_step_size'], gamma=0.5)
 
     model.train()
 
@@ -132,6 +146,7 @@ def main(config):
 
     # Create Dataloaders
     train_dataset = ShapeNet('train' if not config['is_overfit'] else 'overfit', filter_class=config['filter_class'])
+    print(f"Data length {len(train_dataset)}")
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=config['batch_size'], 
@@ -162,6 +177,10 @@ def main(config):
 
     # Create folder for saving checkpoints
     Path(f'runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+
+    # Save config
+    with open(f'runs/{config["experiment_name"]}/config.json', 'w') as f:
+        json.dump(config, f)
 
     # Start training
     train(model, train_dataloader, latent_vectors, latent_log_var, device, config)
