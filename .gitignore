@@ -1,0 +1,9 @@
+data
+logs
+runs
+model/__pycache__/
+
+training/__pycache__/
+
+util/__pycache__/
+© 2022 GitHub, Inc.
