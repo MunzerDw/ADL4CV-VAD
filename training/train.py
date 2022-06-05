@@ -160,7 +160,7 @@ def main(config):
     model = ThreeDEPNDecoder()
 
     # Initialize latent codes and latent variance
-    latent_vectors = torch.normal(mean=0, std=1, size=(len(train_dataset), config['latent_code_length']), device=device)
+    latent_vectors = torch.rand(size=(len(train_dataset), config['latent_code_length']), device=device)
     latent_vectors.requires_grad = True
     latent_log_var = torch.zeros(len(train_dataset), config['latent_code_length'], device=device)
     latent_log_var.requires_grad = config['vad_free']
