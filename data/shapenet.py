@@ -14,12 +14,13 @@ class ShapeNet(torch.utils.data.Dataset):
 
     def __init__(self, split,  filter_class=None):
         super().__init__()
-        assert split in ['train', 'val', 'overfit']
+        assert split in ['train', 'val', 'test', 'overfit']
         self.truncation_distance = 3
 
-        self.items = Path(f"data/splits/shapenet/{split}.txt").read_text().splitlines()  # keep track of shapes based on split
         if filter_class:
-            self.items = Path(f"data/splits/shapenet/{filter_class}.txt").read_text().splitlines()
+            self.items = Path(f"data/splits/shapenet/{filter_class}_{split}.txt").read_text().splitlines()
+        else:
+            self.items = Path(f"data/splits/shapenet/{split}.txt").read_text().splitlines()  # keep track of shapes based on split
 
     def __getitem__(self, index):
         df_id = self.items[index]
