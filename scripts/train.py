@@ -99,6 +99,11 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
 
             # Update network parameters
             optimizer.step()
+                
+            # Update KL-ratio
+            if (epoch % config['kl_weight_increase_epochs'] == (config['kl_weight_increase_epochs'] - 1)) and (config['decoder_var']):
+                config['kl_weight'] = config['kl_weight'] + config['kl_weight_increase_value']
+                print(f"[{epoch:03d}/{batch_idx:05d}] updated kl_weight: {config['kl_weight']}")
 
             # Logging
             train_loss_running += loss.item()

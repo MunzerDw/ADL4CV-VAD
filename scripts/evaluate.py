@@ -24,14 +24,30 @@ def generate_samples(experiment, n):
 def convert_df_to_point_cloud(sample, count=5000):
     """
     input: 
-        sample: tensor (batch_size, 32, 32, 32)
+        sample: tensor (32, 32, 32)
         count: number of points to sample for the point cloud
-    output: trimesh.caching.TrackedArray (subclass of numpy array) (count, 3)
+    output: Tensor (count, 3)
     """
     verts, faces, _, values = marching_cubes(sample.detach().numpy(), level=1)
     mesh = tm.Trimesh(verts, faces, vertex_normals=values)
     point_cloud = tm.sample.sample_surface(mesh, count=count)
-    return point_cloud[0]
+    return torch.from_numpy(point_cloud[0]).float()
+
+def convert_set_to_point_cloud(samples, count=10000):
+    """
+    input: 
+        samples: tensor (batch_size, 32, 32, 32)
+        count: number of points to sample for the point cloud
+    output: Tensor (batch_size, count, 3)
+    """
+    point_clouds = []
+    for sample in samples:
+        verts, faces, _, values = marching_cubes(sample.detach().numpy(), level=1)
+        mesh = tm.Trimesh(verts, faces, vertex_normals=values)
+        point_cloud = tm.sample.sample_surface(mesh, count=count)
+        point_cloud = torch.from_numpy(point_cloud[0]).float()
+        point_clouds.append(point_cloud)
+    return torch.stack(point_clouds)
 
 def visualize_point_cloud(point_cloud):
     # points is a 3D numpy array (n_points, 3) coordinates of a sphere
@@ -49,22 +65,22 @@ def array2samples_distance(array1, array2):
         distances: each entry is the distance from a sample to array1 
     """
     num_point, num_features = array1.shape
-    expanded_array1 = np.tile(array1, (num_point, 1))
-    expanded_array2 = np.reshape(
-            np.tile(np.expand_dims(array2, 1), 
+    expanded_array1 = torch.tile(array1, (num_point, 1))
+    expanded_array2 = torch.reshape(
+            torch.tile(torch.unsqueeze(array2, 1), 
                     (1, num_point, 1)),
             (-1, num_features))
-    distances = np.linalg.norm(expanded_array1-expanded_array2, axis=1)
-    distances = np.reshape(distances, (num_point, num_point))
-    distances = np.min(distances, axis=1)
-    distances = np.mean(distances)
+    distances = torch.linalg.norm(expanded_array1-expanded_array2, axis=1)
+    distances = torch.reshape(distances, (num_point, num_point))
+    distances = torch.min(distances, axis=1)
+    distances = torch.mean(distances.values)
     return distances
 
-def chamfer_distance_numpy(point_cloud1, point_cloud2):
+def chamfer_distance(point_cloud1, point_cloud2):
     """
     input: 
-        point_cloud1: numpy array (counts, 3)
-        point_cloud2: numpy array (counts, 3)
+        point_cloud1: tensor (counts, 3)
+        point_cloud2: tensor (counts, 3)
     output: float
     """
     dist = 0
@@ -76,17 +92,19 @@ def chamfer_distance_numpy(point_cloud1, point_cloud2):
 def mmd(set1, set2):
     """
     input: 
-        set1: tensor (num_samples1, 1, 32, 32, 32)
-        set2: tensor (num_samples2, 1, 32, 32, 32)
+        set1: tensor (num_samples1, num_points, 3)
+        set2: tensor (num_samples2, num_points, 3)
     output: numpy array (num_samples1)
     """
+    set1 = set1.cuda()
+    set2 = set2.cuda()
     distances = []
-    for sample in set1:
+    for i, sample in enumerate(set1):
         sample_distances = []
-        point_cloud = convert_df_to_point_cloud(sample.squeeze(0))
         for sample2 in set2:
-            point_cloud2 = convert_df_to_point_cloud(sample2.squeeze(0))
-            cf_distance = chamfer_distance_numpy(point_cloud, point_cloud2)
+            cf_distance = chamfer_distance_numpy(sample, sample2)
             sample_distances.append(cf_distance)
-        distances.append(sum(sample_distances) / len(sample_distances))
-    return np.array(distances)
+        mmd = sum(sample_distances) / len(sample_distances)
+        distances.append(mmd)
+        print(f"{i + 1}: {mmd}")
+    return torch.stack(distances)
