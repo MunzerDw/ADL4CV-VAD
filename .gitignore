@@ -1,5 +1,4 @@
 data/shapenet_dim32_df
 data/shapenet_dim32_df.zip
-data/splits
 logs
 runs

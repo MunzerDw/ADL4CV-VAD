@@ -80,8 +80,3 @@ def extract2(class1, class2):
                 elif item in onlyfiles2:
                     fp.write(id2 + '/' + item + '\n')
             print(f'Done extracting {class1}_{class2}_{split} - ({len(onlyfiles_splits[split])})')
-
-
-
-extract2(class1="lamp", class2="table")
-extract1(class1="watercraft")
