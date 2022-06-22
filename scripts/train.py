@@ -108,7 +108,6 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             iteration = epoch * len(train_dataloader) + batch_idx
 
             if iteration % config['print_every_n'] == (config['print_every_n'] - 1):
-            #if batch_idx == len(train_dataloader) - 1:
                 n = n + 1
                 samples_per_epoch = config["print_every_n"]
                 train_loss = train_loss_running / samples_per_epoch
@@ -160,7 +159,7 @@ def main(config):
     model = ThreeDEPNDecoder()
 
     # Initialize latent codes and latent variance
-    latent_vectors = torch.rand(size=(len(train_dataset), config['latent_code_length']), device=device)
+    latent_vectors = torch.randn(size=(len(train_dataset), config['latent_code_length']), device=device)
     latent_vectors.requires_grad = True
     latent_log_var = torch.zeros(len(train_dataset), config['latent_code_length'], device=device)
     latent_log_var.requires_grad = config['vad_free']
