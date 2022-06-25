@@ -14,7 +14,7 @@ class ShapeNet(torch.utils.data.Dataset):
 
     def __init__(self, split,  filter_class=None):
         super().__init__()
-        assert split in ['train', 'val', 'test', 'overfit']
+        assert split in ['train', 'val', 'test', 'overfit', 'all']
         self.truncation_distance = 3
 
         if filter_class:

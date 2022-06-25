@@ -3,7 +3,8 @@ from model.threedepn import ThreeDEPNDecoder
 import trimesh as tm
 from skimage.measure import marching_cubes
 import numpy as np
-import pyvista as pv
+#import pyvista as pv
+from data.shapenet import ShapeNet
 
 def generate_samples(experiment, n):
     samples = []
@@ -108,3 +109,31 @@ def mmd(set1, set2):
         distances.append(mmd)
         print(f"{i + 1}: {mmd}")
     return torch.stack(distances)
+
+
+def IOU(experiment, split, filter_class, device):
+    model = ThreeDEPNDecoder()
+    model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location=device))
+    latent_vectors = torch.load(f"runs/{experiment}/latent_best.pt", map_location=device)
+    dataset = ShapeNet(split, filter_class=filter_class)
+    model.to(device)
+    # latent_vectors.to(device)
+    sum1 = 0
+    for index in range(len(dataset)):
+        # idx = idx + 1
+        sample = torch.tensor(dataset[index]['target_df']).to(device)
+        sample[sample < 1] = 1
+        sample[sample > 1] = 0
+        x = latent_vectors[index].unsqueeze(0)
+        output_mesh_iou = model(x)
+        model_sample = output_mesh_iou[0]
+        model_sample[model_sample < 1] = 1
+        model_sample[model_sample > 1] = 0
+        i = sample + model_sample
+        u = sample + model_sample
+        u[u > 1] = 1
+        i = i - 1
+        i[i < 0] = 0
+        sum1 = sum1 + (torch.sum(i) / torch.sum(u)).item()
+
+    return sum1 / len(dataset)
