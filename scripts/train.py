@@ -6,6 +6,7 @@ import torch.distributions as dist
 from model.threedepn import ThreeDEPNDecoder
 from data.shapenet import ShapeNet
 from pytorch_lightning.loggers import TensorBoardLogger
+from scripts.evaluate import IOU, MMD, TMD
 
 # Task Introduction
 # Related Work
@@ -65,6 +66,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
     reconstruction_loss_running = 0.
     kl_loss_running = 0.
     n = 0
+    saved_model = False
     for epoch in range(config['max_epochs']):
         for batch_idx, batch in enumerate(train_dataloader):
             # Move batch to device, set optimizer gradients to zero, perform forward pass
@@ -101,7 +103,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             optimizer.step()
                 
             # Update KL-ratio
-            if (epoch % config['kl_weight_increase_epochs'] == (config['kl_weight_increase_epochs'] - 1)) and (config['decoder_var']):
+            if (epoch % config['kl_weight_increase_every_epochs'] == (config['kl_weight_increase_every_epochs'] - 1)) and (config['decoder_var']):
                 config['kl_weight'] = config['kl_weight'] + config['kl_weight_increase_value']
                 print(f"[{epoch:03d}/{batch_idx:05d}] updated kl_weight: {config['kl_weight']}")
 
@@ -134,7 +136,32 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
                     torch.save(latent_vectors, f'runs/{config["experiment_name"]}/latent_best.pt')
                     torch.save(latent_log_var, f'runs/{config["experiment_name"]}/log_var_best.pt')
                     best_loss = train_loss
+                    saved_model = True
                     
+        # IOU
+        if (epoch % config['iou_every_epoch'] == (config['iou_every_epoch'] - 1)) and (not config['decoder_var']) and saved_model:
+            iou = IOU(config['experiment_name'], 'train', config['filter_class'], device)
+            logger.log_metrics({
+                'IOU': iou,
+            }, epoch)
+            print(f"[{epoch:03d}/{batch_idx:05d}] IOU {iou}")
+                    
+        # MMD
+        if (epoch % config['mmd_every_epoch'] == (config['mmd_every_epoch'] - 1)) and (config['decoder_var']) and saved_model:
+            mmd, _ = MMD(config['experiment_name'], 'val', config['filter_class'], n_samples=10, device=device)
+            logger.log_metrics({
+                'MMD': mmd,
+            }, epoch)
+            print(f"[{epoch:03d}/{batch_idx:05d}] MMD {mmd}")
+                    
+        # TMD
+        if (epoch % config['tmd_every_epoch'] == (config['tmd_every_epoch'] - 1)) and (config['decoder_var']) and saved_model:
+            tmd, _ = TMD(config['experiment_name'], n_samples=10, device=device)
+            logger.log_metrics({
+                'TMD': tmd,
+            }, epoch)
+            print(f"[{epoch:03d}/{batch_idx:05d}] TMD {tmd}")
+            
         # Update scheduler          
         scheduler.step()
 
