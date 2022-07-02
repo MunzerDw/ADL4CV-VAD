@@ -1,0 +1,19 @@
+1-NN:
+-----
+airplane: 77.48
+cars: 
+chair: 68.5
+
+MMD:
+
+TMD:
+-----
+
+
+IOU:
+chairs (train): 0.9209
+chairs (val): 0.86
+airplanes (train): 0.954
+airplanes (val): -
+tables (train): 0.9279
+tables (val): -

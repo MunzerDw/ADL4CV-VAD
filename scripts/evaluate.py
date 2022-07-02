@@ -6,6 +6,7 @@ from skimage.measure import marching_cubes
 import numpy as np
 import pyvista as pv
 from data.shapenet import ShapeNet
+from chamferdist  import ChamferDistance
 
 def generate_samples(experiment, n, device=None):
     samples = []
@@ -62,8 +63,8 @@ def convert_df_to_point_cloud(sample, count=2048):
         count: number of points to sample for the point cloud
     output: tensor (count, 3)
     """
-    verts, faces, _, values = marching_cubes(sample.cpu().detach().numpy(), level=1)
-    mesh = tm.Trimesh(verts, faces, vertex_normals=values)
+    verts, faces, normals, _ = marching_cubes(sample.cpu().detach().numpy(), level=1)
+    mesh = tm.Trimesh(verts, faces, vertex_normals=normals)
     point_cloud = tm.sample.sample_surface(mesh, count=count)
     point_cloud = point_cloud[0]
     # point_cloud = upsample_point_cloud(point_cloud, count)
@@ -233,3 +234,61 @@ def IOU(experiment, split, filter_class, device):
 
     return sum1 / len(dataset)
     
+def ONE_NN(experiment, split, filter_class, device):
+    chamfer_dist = ChamferDistance()
+    # get test set
+    val = []
+    val_dataset = ShapeNet(split, filter_class=filter_class)
+    for data_dict in val_dataset:
+        target_df = torch.from_numpy(data_dict['target_df']).float().to(device)
+        val.append(target_df)
+    val = torch.stack(val).to(device)
+    # generate n new samples
+    samples = generate_samples(experiment, val.size()[0], device)
+    samples = samples.squeeze(1)
+    # convert sets to pointclouds
+    samples_point_clouds = convert_set_to_point_cloud(samples, count=2048, device=device)
+    val_point_clouds = convert_set_to_point_cloud(val, count=2048, device=device)
+
+    samples_same_set = 0
+    print(f"validation set samples: {val.size()[0]}")
+    for i, point_cloud1 in enumerate(samples_point_clouds):
+        min_cf_distance = 1000
+        is_min_same_set = False
+        for ii, point_cloud2 in enumerate(samples_point_clouds):
+            if i == ii:
+                continue
+            cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
+            if cf_distance < min_cf_distance:
+                min_cf_distance = cf_distance
+                is_min_same_set = True
+        for iii, point_cloud3 in enumerate(val_point_clouds):
+            cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud3.unsqueeze(0))
+            if cf_distance < min_cf_distance:
+                min_cf_distance = cf_distance
+                is_min_same_set = False
+        if is_min_same_set:
+            samples_same_set += 1
+        print(f"Sample {i} done. {min_cf_distance}")
+    
+    for i, point_cloud1 in enumerate(val_point_clouds):
+        min_cf_distance = 1000
+        is_min_same_set = False
+        for ii, point_cloud2 in enumerate(val_point_clouds):
+            if i == ii:
+                continue
+            cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
+            if cf_distance < min_cf_distance:
+                min_cf_distance = cf_distance
+                is_min_same_set = True
+        for iii, point_cloud3 in enumerate(samples_point_clouds):
+            cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud3.unsqueeze(0))
+            if cf_distance < min_cf_distance:
+                min_cf_distance = cf_distance
+                is_min_same_set = False
+        if is_min_same_set:
+            samples_same_set += 1
+        print(f"Sample (val) {i} done. {min_cf_distance}")
+    
+    return samples_same_set / (2 * val.size()[0])
+            
