@@ -101,11 +101,6 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
 
             # Update network parameters
             optimizer.step()
-                
-            # Update KL-ratio
-            if (epoch % config['kl_weight_increase_every_epochs'] == (config['kl_weight_increase_every_epochs'] - 1)) and (config['decoder_var']):
-                config['kl_weight'] = config['kl_weight'] + config['kl_weight_increase_value']
-                print(f"[{epoch:03d}/{batch_idx:05d}] updated kl_weight: {config['kl_weight']}")
 
             # Logging
             train_loss_running += loss.item()
@@ -137,7 +132,15 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
                     torch.save(latent_log_var, f'runs/{config["experiment_name"]}/log_var_best.pt')
                     best_loss = train_loss
                     saved_model = True
-                    
+        
+        # Update KL-ratio
+        if (epoch % config['kl_weight_increase_every_epochs'] == (config['kl_weight_increase_every_epochs'] - 1)) and (config['decoder_var']):
+            config['kl_weight'] = config['kl_weight'] + config['kl_weight_increase_value']
+            logger.log_metrics({
+                'kl_weight': config['kl_weight'],
+            }, epoch)
+            print(f"[{epoch:03d}/{batch_idx:05d}] updated kl_weight: {config['kl_weight']}")
+
         # IOU
         if (epoch % config['iou_every_epoch'] == (config['iou_every_epoch'] - 1)) and (not config['decoder_var']) and saved_model:
             iou = IOU(config['experiment_name'], 'train', config['filter_class'], device)

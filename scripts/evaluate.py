@@ -153,6 +153,7 @@ def _mmd(set1, set2):
     return torch.stack(distances)
 
 def min_sample(split, filter_class, sample, device=None):
+    chamfer_dist = ChamferDistance()
     sample = convert_df_to_point_cloud(sample)
     sample = sample.to(device)
     # get test set
@@ -167,7 +168,7 @@ def min_sample(split, filter_class, sample, device=None):
     min_cf_distance = 1000
     final_sample = None
     for i, sample_val in enumerate(val_point_clouds):
-        cf_distance = chamfer_distance(sample, sample_val)
+        cf_distance = chamfer_dist(sample.unsqueeze(0), sample_val.unsqueeze(0))
         if cf_distance < min_cf_distance:
             final_sample = val[i]
             min_cf_distance = cf_distance
@@ -250,18 +251,19 @@ def ONE_NN(experiment, split, filter_class, device):
     samples_point_clouds = convert_set_to_point_cloud(samples, count=2048, device=device)
     val_point_clouds = convert_set_to_point_cloud(val, count=2048, device=device)
 
+    current_set_size = 0
     samples_same_set = 0
     print(f"validation set samples: {val.size()[0]}")
     for i, point_cloud1 in enumerate(samples_point_clouds):
+        current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
         for ii, point_cloud2 in enumerate(samples_point_clouds):
-            if i == ii:
-                continue
-            cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
-            if cf_distance < min_cf_distance:
-                min_cf_distance = cf_distance
-                is_min_same_set = True
+            if i != ii:
+                cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
+                if cf_distance < min_cf_distance:
+                    min_cf_distance = cf_distance
+                    is_min_same_set = True
         for iii, point_cloud3 in enumerate(val_point_clouds):
             cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud3.unsqueeze(0))
             if cf_distance < min_cf_distance:
@@ -269,18 +271,18 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
-        print(f"Sample {i} done. {min_cf_distance}")
+        print(f"Sample {i} done. {samples_same_set / current_set_size}")
     
     for i, point_cloud1 in enumerate(val_point_clouds):
+        current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
         for ii, point_cloud2 in enumerate(val_point_clouds):
-            if i == ii:
-                continue
-            cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
-            if cf_distance < min_cf_distance:
-                min_cf_distance = cf_distance
-                is_min_same_set = True
+            if i != ii:
+                cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
+                if cf_distance < min_cf_distance:
+                    min_cf_distance = cf_distance
+                    is_min_same_set = True
         for iii, point_cloud3 in enumerate(samples_point_clouds):
             cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud3.unsqueeze(0))
             if cf_distance < min_cf_distance:
@@ -288,7 +290,7 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
-        print(f"Sample (val) {i} done. {min_cf_distance}")
+        print(f"Sample (val) {i} done. {samples_same_set / current_set_size}")
     
     return samples_same_set / (2 * val.size()[0])
             
