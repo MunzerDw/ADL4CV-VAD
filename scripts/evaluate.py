@@ -243,7 +243,7 @@ def ONE_NN(experiment, split, filter_class, device):
     for data_dict in val_dataset:
         target_df = torch.from_numpy(data_dict['target_df']).float().to(device)
         val.append(target_df)
-    val = torch.stack(val).to(device)
+    val = torch.stack(val[:int(len(val) / 2)]).to(device)
     # generate n new samples
     samples = generate_samples(experiment, val.size()[0], device)
     samples = samples.squeeze(1)

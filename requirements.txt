@@ -9,3 +9,4 @@ moviepy>=1.0.3
 pillow>=7.2.0
 tqdm>=4.48.2
 scipy>=1.4.1
+sklearn

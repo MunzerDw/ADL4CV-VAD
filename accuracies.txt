@@ -1,8 +1,8 @@
 1-NN:
 -----
-airplane: 77.48
-cars: 
-chair: 68.5
+airplane: 70.05 (airplane_vad)
+cars: 71.38 (car_vad)
+chair: 66.66 (chair_vad)
 
 MMD:
 
@@ -11,9 +11,9 @@ TMD:
 
 
 IOU:
-chairs (train): 0.9209
-chairs (val): 0.86
-airplanes (train): 0.954
+chairs (train): 0.9209 (chair_ad)
+chairs (val): 0.86 (chair_ad)
+airplanes (train): 0.954 (airplane_ad)
 airplanes (val): -
-tables (train): 0.9279
+tables (train): 0.9279 (table_ad)
 tables (val): -
