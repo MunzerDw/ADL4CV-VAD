@@ -309,7 +309,7 @@ def parse_arguments():
     parser.add_argument('filter_class', choices=classes, type=str)
     parser.add_argument('action', choices=action, type=str)
     parser.add_argument('--split', choices=['train', 'val'], help='latent codes set to calculate IOU on', type=str, default='train')
-    parser.add_argument('--cuda', help='enable cuda', action='store_true', default=True)
+    parser.add_argument('--cpu', help='disable cuda', action='store_true')
 
     args = parser.parse_args()
     return vars(args)
@@ -320,7 +320,7 @@ def main():
 
     # Declare device
     device = torch.device('cpu')
-    if torch.cuda.is_available() and args['cuda']:
+    if torch.cuda.is_available() and not args['cpu']:
         device = torch.device('cuda')
         print('Using CUDA')
     else:

@@ -173,7 +173,7 @@ def parse_arguments():
     parser.add_argument('--print_every_n', type=int, default=100)
     parser.add_argument('--scheduler_step_size', type=int, default=100)
     parser.add_argument('--iou_every_epoch', help='calculate IOU every how many epochs (only for non-variational models)', type=int, default=50)
-    parser.add_argument('--cuda', help='enable cuda', action='store_true', default=True)
+    parser.add_argument('--cpu', help='disable cuda', action='store_true')
     parser.add_argument('--num_workers', help='number of workers for the dataloader', type=int, default=4)
 
     args = parser.parse_args()
@@ -186,7 +186,7 @@ def main():
 
     # Declare device
     device = torch.device('cpu')
-    if torch.cuda.is_available() and args['cuda']:
+    if torch.cuda.is_available() and not args['cpu']:
         device = torch.device('cuda')
         print('Using CUDA')
     else:

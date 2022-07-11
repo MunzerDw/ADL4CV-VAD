@@ -4,3 +4,8 @@ logs/*
 runs/*
 .DS_Store
 ._*
+model/__pycache__/
+
+data/__pycache__/
+
+scripts/__pycache__/
