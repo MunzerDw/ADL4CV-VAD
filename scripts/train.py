@@ -1,26 +1,18 @@
 import json
+import sys
+import os
+import argparse
 from pathlib import Path
-
 import torch
 import torch.distributions as dist
+from pytorch_lightning.loggers import TensorBoardLogger
+
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+sys.path.append(os.path.join(os.getcwd()))
+
 from model.threedepn import ThreeDEPNDecoder
 from data.shapenet import ShapeNet
-from pytorch_lightning.loggers import TensorBoardLogger
-from scripts.evaluate import IOU, MMD, TMD
-
-# Task Introduction
-# Related Work
-# - talk about deepsdf and why it doesnt work
-# Method
-# - explain the method and our model
-# Experiments
-# - AD (interpolation, reconstruction, random vector)
-# - VAD (inter-class interpolation, intra-class interpolation, generation of new samples from learned distributions)
-# Conclusion
-# - what are the new contributions?
-# Next steps
-# ...next steps (more experiments, try increase model capactity, write report)
-
+from scripts.evaluate import IOU
 
 def train(model, train_dataloader, latent_vectors, latent_log_var, device, config):
     # Initialize logger
@@ -38,19 +30,25 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             'lr': config['learning_rate_code']
         }
     ]
-    if config['vad_free'] and config['decoder_var']:
+    if config['vad']:
         params.append({
             'params': latent_log_var,
             'lr': config['learning_rate_log_var']
         })
     
-    if config['test'] is False:
+    if not config['test']:
         params.append({
             'params': model.parameters(),
-            'lr': config['learning_rate_model']
+            'lr': config['learning_rate_decoder']
         })
-
-    print(f'Training params: {len(params)}')
+    if len(params) == 1:
+        print(f'Training latent codes')
+    if len(params) == 2 and config['vad']:
+        print(f'Training latent codes and variances')
+    else:
+        print(f'Training latent codes and decoder weights')
+    if len(params) == 3:
+        print(f'Training latent codes, variances, and decoder weights')
 
     # Define Optimizers
     optimizer = torch.optim.Adam(params)
@@ -72,7 +70,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             # Move batch to device, set optimizer gradients to zero, perform forward pass
             ShapeNet.move_batch_to_device(batch, device)
             optimizer.zero_grad()
-            if config['decoder_var']:
+            if config['vad']:
 
             # Create distribution from latent codes and laten variances (each sample has its own distribution)
                 Dist = dist.Normal(latent_vectors[batch['index']], torch.exp(latent_log_var[batch['index']]))
@@ -91,7 +89,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
 
             # Compute loss, Compute gradients, Update network parameters
             reconstruction_loss = reconstruction_loss_criterion(reconstruction, target)
-            if config['decoder_var']:
+            if config['vad']:
                 kl_loss = torch.mean(dist.kl_divergence(Dist, q_z))
                 loss = reconstruction_loss + config['kl_weight'] * kl_loss
             else:
@@ -105,7 +103,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
             # Logging
             train_loss_running += loss.item()
             reconstruction_loss_running += reconstruction_loss.item()
-            if config['decoder_var']:
+            if config['vad']:
                 kl_loss_running += kl_loss.item()
             iteration = epoch * len(train_dataloader) + batch_idx
 
@@ -148,73 +146,124 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
                 'IOU': iou,
             }, epoch)
             print(f"[{epoch:03d}/{batch_idx:05d}] IOU {iou}")
-                    
-        # MMD
-        if (epoch % config['mmd_every_epoch'] == (config['mmd_every_epoch'] - 1)) and (config['decoder_var']) and saved_model:
-            mmd, _ = MMD(config['experiment_name'], 'val', config['filter_class'], n_samples=10, device=device)
-            logger.log_metrics({
-                'MMD': mmd,
-            }, epoch)
-            print(f"[{epoch:03d}/{batch_idx:05d}] MMD {mmd}")
-                    
-        # TMD
-        if (epoch % config['tmd_every_epoch'] == (config['tmd_every_epoch'] - 1)) and (config['decoder_var']) and saved_model:
-            tmd, _ = TMD(config['experiment_name'], n_samples=10, device=device)
-            logger.log_metrics({
-                'TMD': tmd,
-            }, epoch)
-            print(f"[{epoch:03d}/{batch_idx:05d}] TMD {tmd}")
             
         # Update scheduler          
         scheduler.step()
 
+# config = {
+#     'experiment_name': 'chair_ad',
+#     'device': 'cuda:0',
+#     'is_overfit': False,
+#     'batch_size': 64,
+#     'learning_rate_model': 0.01,
+#     'learning_rate_code': 0.01,
+#     'learning_rate_log_var':0.01,
+#     'max_epochs': 1000,
+#     'print_every_n': 100,
+#     'latent_code_length' : 256,
+#     'scheduler_step_size': 100,
+#     'vad_free' : False,
+#     'test': False,
+#     'kl_weight': 0.03,
+#     'kl_weight_increase_every_epochs': 100,
+#     'kl_weight_increase_value': 0.0,
+#     'iou_every_epoch': 50,
+#     'resume_ckpt': None,
+#     'filter_class': 'chair',
+#     'decoder_var' : False
+# }
 
-def main(config):
+def parse_arguments():
+    classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabine', 'watercraft', 'table']
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('experiment_name', type=str)
+    parser.add_argument('filter_class', choices=classes, type=str)
+    parser.add_argument('--resume', help='resume the training of the experiment', action='store_true')
+    parser.add_argument('--test', help='freeze decoder weights and train on validation set', action='store_true')
+    parser.add_argument('--vad', help='train a variational auto-decoder', action='store_true')
+    parser.add_argument('--kl_weight', type=int, default=0.03)
+    parser.add_argument('--kl_weight_increase_every_epochs', help='increase kl-weight every how many epochs', type=int, default=100)
+    parser.add_argument('--kl_weight_increase_value', help='increase kl-weight by how much (addition)', type=int, default=0.0)
+    parser.add_argument('--latent_code_length', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--learning_rate_decoder', type=int, default=0.01)
+    parser.add_argument('--learning_rate_code', type=int, default=0.01)
+    parser.add_argument('--learning_rate_log_var', type=int, default=0.01)
+    parser.add_argument('--max_epochs', type=int, default=1000)
+    parser.add_argument('--print_every_n', type=int, default=100)
+    parser.add_argument('--scheduler_step_size', type=int, default=100)
+    parser.add_argument('--iou_every_epoch', help='calculate IOU every how many epochs (only for non-variational models)', type=int, default=50)
+    parser.add_argument('--cuda', help='enable cuda', action='store_true', default=True)
+    parser.add_argument('--num_workers', help='number of workers for the dataloader', type=int, default=4)
+
+    args = parser.parse_args()
+    return vars(args)
+
+def main():
+    # read arguments
+    args = parse_arguments()
+
     # Declare device
     device = torch.device('cpu')
-    if torch.cuda.is_available() and config['device'].startswith('cuda'):
-        device = torch.device(config['device'])
-        print('Using device:', config['device'])
+    if torch.cuda.is_available() and args['cuda']:
+        device = torch.device('cuda')
+        print('Using CUDA')
     else:
         print('Using CPU')
 
     # Create Dataloaders
-    train_dataset = ShapeNet('train' if not config['is_overfit'] else 'overfit', filter_class=config['filter_class'])
-    print(f"Data length {len(train_dataset)}")
-    train_dataloader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=config['batch_size'], 
+    dataset = ShapeNet('train' if not args['test'] else 'val', filter_class=args['filter_class'])
+    print(f"Data length ({args['filter_class']}): {len(dataset)}")
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=args['batch_size'], 
         shuffle=True,
-        num_workers=4,
+        num_workers=args['num_workers'],
         pin_memory=True,
-        # worker_init_fn=train_dataset.worker_init_fn  TODO: Uncomment this line if you are using shapenet_zip on Google Colab
     )
 
     # Instantiate model
     model = ThreeDEPNDecoder()
 
     # Initialize latent codes and latent variance
-    latent_vectors = torch.randn(size=(len(train_dataset), config['latent_code_length']), device=device)
+    latent_vectors = torch.randn(size=(len(dataset), args['latent_code_length']), device=device)
     latent_vectors.requires_grad = True
-    latent_log_var = torch.zeros(len(train_dataset), config['latent_code_length'], device=device)
-    latent_log_var.requires_grad = config['vad_free']
+    latent_log_var = torch.zeros(len(dataset), args['latent_code_length'], device=device)
+    latent_log_var.requires_grad = args['vad']
 
     # Load model if resuming from checkpoint
-    if config['resume_ckpt'] is not None:
+    if args['resume']:
         print('Loading saved model, latent codes, and latent variances...')
-        model.load_state_dict(torch.load(f"runs/{config['resume_ckpt']}/model_best.ckpt", map_location=config['device']))
-        latent_vectors = torch.load(f"runs/{config['resume_ckpt']}/latent_best.pt", map_location = config['device'])
-        latent_log_var = torch.load(f"runs/{config['resume_ckpt']}/log_var_best.pt", map_location = config['device'])
+        model.load_state_dict(torch.load(f"runs/{args['experiment_name']}/model_best.ckpt", map_location=device))
+        latent_vectors = torch.load(f"runs/{args['experiment_name']}/latent_best.pt", map_location = device)
+        latent_log_var = torch.load(f"runs/{args['experiment_name']}/log_var_best.pt", map_location = device)
 
     # Move model to specified device
     model.to(device)
 
     # Create folder for saving checkpoints
-    Path(f'runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+    Path(f'runs/{args["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Save config
-    with open(f'runs/{config["experiment_name"]}/config.json', 'w') as f:
-        json.dump(config, f)
+    with open(f'runs/{args["experiment_name"]}/config.json', 'w') as f:
+        json.dump(args, f)
 
     # Start training
-    train(model, train_dataloader, latent_vectors, latent_log_var, device, config)
+    train(model, dataloader, latent_vectors, latent_log_var, device, args)
+
+if __name__ == '__main__':
+    try:
+        main()
+        sys.stdout.flush()
+    except KeyboardInterrupt:
+        print('Interrupted...')
+        print('Best model, latent codes and variances are stored under runs/<experiment name>')
+        print("You can resume an experiment by setting the '--resume' flag")
+        try:
+            sys.exit(0)
+        except:
+            os._exit(0)
+
+# conda activate adl4cv
+# python scripts/train.py car_exp car 
