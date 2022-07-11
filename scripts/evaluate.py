@@ -213,12 +213,12 @@ def TMD(experiment, n_samples, device=None):
 def IOU(experiment, split, filter_class, device):
     model = ThreeDEPNDecoder()
     model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location=device))
-    latent_vectors = torch.load(f"runs/{experiment}/latent_best.pt", map_location=device)
+    latent_vectors = torch.load(f"runs/{experiment}/latent_best_{split}.pt", map_location=device)
     dataset = ShapeNet(split, filter_class=filter_class)
     model.to(device)
     # latent_vectors.to(device)
     sum1 = 0
-    for index in range(len(dataset)):
+    for index in tqdm(range(len(dataset))):
         # idx = idx + 1
         sample = torch.tensor(dataset[index]['target_df']).to(device)
         sample[sample < 1] = 1
@@ -302,10 +302,13 @@ def ONE_NN(experiment, split, filter_class, device):
 
 def parse_arguments():
     classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabine', 'watercraft', 'table']
+    action = ['NNA', 'IOU']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('experiment_name', type=str)
     parser.add_argument('filter_class', choices=classes, type=str)
+    parser.add_argument('action', choices=action, type=str)
+    parser.add_argument('--split', choices=['train', 'val'], help='latent codes set to calculate IOU on', type=str, default='train')
     parser.add_argument('--cuda', help='enable cuda', action='store_true', default=True)
 
     args = parser.parse_args()
@@ -322,9 +325,15 @@ def main():
         print('Using CUDA')
     else:
         print('Using CPU')
-    
-    one_nn = ONE_NN(args['experiment_name'], 'val', args['filter_class'], device=device)
-    print(f'1-NN score: {one_nn}')
+
+    if  args['action'] == 'NNA':
+        print('Calculating NNA score...')
+        one_nn = ONE_NN(args['experiment_name'], 'val', args['filter_class'], device=device)
+        print(f'1-NN score: {one_nn}')
+    if  args['action'] == 'IOU':
+        print('Calculating IOU score...')
+        iou = IOU(args['experiment_name'], args['split'], args['filter_class'], device=device)
+        print(f'IOU score: {iou}')
     
 if __name__ == '__main__':
     try:

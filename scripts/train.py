@@ -15,6 +15,8 @@ from data.shapenet import ShapeNet
 from scripts.evaluate import IOU
 
 def train(model, train_dataloader, latent_vectors, latent_log_var, device, config):
+    split = 'train' if not config['test'] else 'val'
+
     # Initialize logger
     logger = TensorBoardLogger("logs", name=config['experiment_name'])
     logger.log_graph(model)
@@ -45,7 +47,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
         print(f'Training latent codes')
     if len(params) == 2 and config['vad']:
         print(f'Training latent codes and variances')
-    else:
+    if len(params) == 2 and not config['vad']:
         print(f'Training latent codes and decoder weights')
     if len(params) == 3:
         print(f'Training latent codes, variances, and decoder weights')
@@ -126,8 +128,8 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
                 # Save model checkpoint
                 if train_loss < best_loss:
                     torch.save(model.state_dict(), f'runs/{config["experiment_name"]}/model_best.ckpt')
-                    torch.save(latent_vectors, f'runs/{config["experiment_name"]}/latent_best.pt')
-                    torch.save(latent_log_var, f'runs/{config["experiment_name"]}/log_var_best.pt')
+                    torch.save(latent_vectors, f'runs/{config["experiment_name"]}/latent_best_{split}.pt')
+                    torch.save(latent_log_var, f'runs/{config["experiment_name"]}/log_var_best_{split}.pt')
                     best_loss = train_loss
                     saved_model = True
         
@@ -180,6 +182,7 @@ def parse_arguments():
 def main():
     # read arguments
     args = parse_arguments()
+    split = 'train' if not args['test'] else 'val'
 
     # Declare device
     device = torch.device('cpu')
@@ -190,7 +193,7 @@ def main():
         print('Using CPU')
 
     # Create Dataloaders
-    dataset = ShapeNet('train' if not args['test'] else 'val', filter_class=args['filter_class'])
+    dataset = ShapeNet(split, filter_class=args['filter_class'])
     print(f"Data length ({args['filter_class']}): {len(dataset)}")
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -209,12 +212,17 @@ def main():
     latent_log_var = torch.zeros(len(dataset), args['latent_code_length'], device=device)
     latent_log_var.requires_grad = args['vad']
 
+    # Load model if testing
+    if args['test'] and not args['resume']:
+        print('Loading saved model for testing...')
+        model.load_state_dict(torch.load(f"runs/{args['experiment_name']}/model_best.ckpt", map_location=device))
+
     # Load model if resuming from checkpoint
     if args['resume']:
         print('Loading saved model, latent codes, and latent variances...')
         model.load_state_dict(torch.load(f"runs/{args['experiment_name']}/model_best.ckpt", map_location=device))
-        latent_vectors = torch.load(f"runs/{args['experiment_name']}/latent_best.pt", map_location = device)
-        latent_log_var = torch.load(f"runs/{args['experiment_name']}/log_var_best.pt", map_location = device)
+        latent_vectors = torch.load(f"runs/{args['experiment_name']}/latent_best_{split}.pt", map_location = device)
+        latent_log_var = torch.load(f"runs/{args['experiment_name']}/log_var_best_{split}.pt", map_location = device)
 
     # Move model to specified device
     model.to(device)
