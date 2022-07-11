@@ -153,7 +153,7 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
         scheduler.step()
 
 def parse_arguments():
-    classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabine', 'watercraft', 'table']
+    classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabinet', 'watercraft', 'table']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('experiment_name', type=str)
