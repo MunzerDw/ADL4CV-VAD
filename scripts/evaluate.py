@@ -260,7 +260,8 @@ def ONE_NN(experiment, split, filter_class, device):
     current_set_size = 0
     samples_same_set = 0
     print('Calculating 1-NN generated set part:')
-    for i, point_cloud1 in enumerate(tqdm(samples_point_clouds)):
+    samples_point_clouds_tqdm = tqdm(samples_point_clouds)
+    for i, point_cloud1 in enumerate(samples_point_clouds_tqdm):
         current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
@@ -277,10 +278,12 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
+        samples_point_clouds_tqdm.set_postfix({'interim result': samples_same_set / current_set_size })
         # print(f"Sample {i} done. {samples_same_set / current_set_size}")
     
     print('Calculating 1-NN validation set part:')
-    for i, point_cloud1 in enumerate(tqdm(val_point_clouds)):
+    val_point_clouds_tqdm = tqdm(val_point_clouds)
+    for i, point_cloud1 in enumerate(val_point_clouds_tqdm):
         current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
@@ -297,6 +300,7 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
+        val_point_clouds_tqdm.set_postfix({'interim result': samples_same_set / current_set_size })
         # print(f"Sample (val) {i} done. {samples_same_set / current_set_size}")
     
     return samples_same_set / (2 * val.size()[0])
