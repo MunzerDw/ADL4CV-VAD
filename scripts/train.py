@@ -150,29 +150,6 @@ def train(model, train_dataloader, latent_vectors, latent_log_var, device, confi
         # Update scheduler          
         scheduler.step()
 
-# config = {
-#     'experiment_name': 'chair_ad',
-#     'device': 'cuda:0',
-#     'is_overfit': False,
-#     'batch_size': 64,
-#     'learning_rate_model': 0.01,
-#     'learning_rate_code': 0.01,
-#     'learning_rate_log_var':0.01,
-#     'max_epochs': 1000,
-#     'print_every_n': 100,
-#     'latent_code_length' : 256,
-#     'scheduler_step_size': 100,
-#     'vad_free' : False,
-#     'test': False,
-#     'kl_weight': 0.03,
-#     'kl_weight_increase_every_epochs': 100,
-#     'kl_weight_increase_value': 0.0,
-#     'iou_every_epoch': 50,
-#     'resume_ckpt': None,
-#     'filter_class': 'chair',
-#     'decoder_var' : False
-# }
-
 def parse_arguments():
     classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabine', 'watercraft', 'table']
 
