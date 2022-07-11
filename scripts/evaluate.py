@@ -1,10 +1,17 @@
+import sys
+import os
+import argparse
 import random
 import torch
-from model.threedepn import ThreeDEPNDecoder
-import trimesh as tm
-from skimage.measure import marching_cubes
 import numpy as np
-import pyvista as pv
+import trimesh as tm
+from tqdm import tqdm
+
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+sys.path.append(os.path.join(os.getcwd()))
+
+from skimage.measure import marching_cubes
+from model.threedepn import ThreeDEPNDecoder
 from data.shapenet import ShapeNet
 from chamferdist  import ChamferDistance
 
@@ -90,11 +97,6 @@ def convert_set_to_point_cloud(samples, count=2048, device=None):
         point_cloud = scale_to_unit_sphere(point_cloud)
         point_clouds.append(point_cloud)
     return torch.stack(point_clouds).to(device)
-
-def visualize_point_cloud(point_cloud):
-    # points is a 3D numpy array (n_points, 3) coordinates of a sphere
-    cloud = pv.PolyData(point_cloud)
-    cloud.plot()
 
 # https://stackoverflow.com/questions/47060685/chamfer-distance-between-two-point-clouds-in-tensorflow
 
@@ -243,18 +245,21 @@ def ONE_NN(experiment, split, filter_class, device):
     for data_dict in val_dataset:
         target_df = torch.from_numpy(data_dict['target_df']).float().to(device)
         val.append(target_df)
-    val = torch.stack(val[:int(len(val) / 2)]).to(device)
+    val = torch.stack(val).to(device)
+    print(f"number of validation set samples: {val.size()[0]}")
     # generate n new samples
     samples = generate_samples(experiment, val.size()[0], device)
     samples = samples.squeeze(1)
+    print(f"number of generated samples: {samples.size()[0]}")
     # convert sets to pointclouds
+    print('Converting generated and validation sets to point clouds...')
     samples_point_clouds = convert_set_to_point_cloud(samples, count=2048, device=device)
     val_point_clouds = convert_set_to_point_cloud(val, count=2048, device=device)
 
     current_set_size = 0
     samples_same_set = 0
-    print(f"validation set samples: {val.size()[0]}")
-    for i, point_cloud1 in enumerate(samples_point_clouds):
+    print('Calculating 1-NN generated set part:')
+    for i, point_cloud1 in enumerate(tqdm(samples_point_clouds)):
         current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
@@ -271,9 +276,10 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
-        print(f"Sample {i} done. {samples_same_set / current_set_size}")
+        # print(f"Sample {i} done. {samples_same_set / current_set_size}")
     
-    for i, point_cloud1 in enumerate(val_point_clouds):
+    print('Calculating 1-NN validation set part:')
+    for i, point_cloud1 in enumerate(tqdm(val_point_clouds)):
         current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
@@ -290,7 +296,46 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
-        print(f"Sample (val) {i} done. {samples_same_set / current_set_size}")
+        # print(f"Sample (val) {i} done. {samples_same_set / current_set_size}")
     
     return samples_same_set / (2 * val.size()[0])
-            
+
+def parse_arguments():
+    classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabine', 'watercraft', 'table']
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('experiment_name', type=str)
+    parser.add_argument('filter_class', choices=classes, type=str)
+    parser.add_argument('--cuda', help='enable cuda', action='store_true', default=True)
+
+    args = parser.parse_args()
+    return vars(args)
+
+def main():
+    # read arguments
+    args = parse_arguments()
+
+    # Declare device
+    device = torch.device('cpu')
+    if torch.cuda.is_available() and args['cuda']:
+        device = torch.device('cuda')
+        print('Using CUDA')
+    else:
+        print('Using CPU')
+    
+    one_nn = ONE_NN(args['experiment_name'], 'val', args['filter_class'], device=device)
+    print(f'1-NN score: {one_nn}')
+    
+if __name__ == '__main__':
+    try:
+        main()
+        sys.stdout.flush()
+    except KeyboardInterrupt:
+        print('Interrupted...')
+        try:
+            sys.exit(0)
+        except:
+            os._exit(0)
+
+# conda activate adl4cv
+# python scripts/evaluate.py car_vad car 
