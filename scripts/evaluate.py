@@ -248,6 +248,7 @@ def ONE_NN(experiment, split, filter_class, device):
     val = torch.stack(val).to(device)
     print(f"number of validation set samples: {val.size()[0]}")
     # generate n new samples
+    print('generating samples...')
     samples = generate_samples(experiment, val.size()[0], device)
     samples = samples.squeeze(1)
     print(f"number of generated samples: {samples.size()[0]}")
