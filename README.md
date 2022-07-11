@@ -11,7 +11,7 @@ This project is part of the 'Advanced Deep Learning for Computer Vision' course 
 Note: we only tested it with conda
 
 ## Data
-- Please download [shapenet_dim35_df.zip](https://drive.google.com/file/d/1-0WDifB7km53JgfsTSEjxIXTakFilEEE/view?usp=sharing) and unzip the file under ```data/```
+- Download [shapenet_dim35_df.zip](https://drive.google.com/file/d/1-0WDifB7km53JgfsTSEjxIXTakFilEEE/view?usp=sharing) and unzip the file under ```data/```
 Your directory should then look like this:
 ```
 data/
