@@ -58,4 +58,4 @@ For visulizing samples from shape synthesis, inter-class and intra-class interpo
 
 ## Logging
 You can use tensorboard to see the losses (under ```logs/```) during training and testing.    
-```tensorboard --logdir logs```.
+```tensorboard --logdir logs```
