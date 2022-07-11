@@ -55,3 +55,7 @@ To evaluate a non-variational auto decoder on the IOU score, use the following c
 
 ## Visualizations
 For visulizing samples from shape synthesis, inter-class and intra-class interpolation we prepared a jupyter notebook ```visualize.ipynb```.
+
+## Logging
+You can use tensorboard to see the losses (under ```logs/```) during training and testing.    
+```tensorboard --logdir logs```.
