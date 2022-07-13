@@ -1,3 +1,9 @@
+##################################################
+
+# This file is a modified version from an excercise of the course "Machine Learning for 3D Geometry" (IN2392)
+
+##################################################
+
 """ Visualization utilities """
 from pathlib import Path
 
