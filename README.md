@@ -48,7 +48,7 @@ To test a trained non-variational auto-decoder on the validation data use the fo
 ### Variational Auto Decoder
 To evaluate a variational auto decoder on the 1-NN score, use the following command  
 ```python scripts/evaluate.py --split test <experiment_name> <class> 1NN ```  
-If you wish to test with a fewer number of samples from the reference set, use the ```--n 200 ``` flag  
+If you wish to test with a fewer number of samples from the reference set, use the ```--n 200``` flag  
 ### Non-Variational Auto Decoder
 To evaluate a non-variational auto decoder on the IOU score, use the following command  
 ```python scripts/evaluate.py --split test <experiment_name> <class> IOU ```  
