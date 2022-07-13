@@ -11,12 +11,22 @@ from sklearn.decomposition import PCA
 from IPython.display import clear_output
 
 def visualize_dataset_sample(filter_class, index):
+    """
+    input: 
+        filter_class: string (class of the dataset (airplane, chair, car, etc.))
+        index: int (index of sample to visualize)
+    """
     dataset = ShapeNet('train', filter_class = filter_class)
     sample = dataset[index]
     input_mesh = marching_cubes(sample['target_df'], level=1)
     visualize_mesh(input_mesh[0], input_mesh[1], flip_axes=True)
 
 def visualize_ad(experiment, index):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        index: int (index of sample to visualize)
+    """
     # Load model
     model = ThreeDEPNDecoder()
     model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location='cpu'))
@@ -31,6 +41,11 @@ def visualize_ad(experiment, index):
     visualize_mesh(output_mesh_int[0], output_mesh_int[1], flip_axes=True)
 
 def visualize_vad(experiment, index):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        index: int (index of sample to visualize)
+    """
     # Load model
     model = ThreeDEPNDecoder()
     model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location='cpu'))
@@ -48,6 +63,11 @@ def visualize_vad(experiment, index):
     visualize_mesh(output_mesh_int[0], output_mesh_int[1], flip_axes=True)
 
 def visualize_vad_norm(experiment):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        index: int (index of sample to visualize)
+    """
     # Load model
     model = ThreeDEPNDecoder()
     model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location='cpu'))
@@ -61,6 +81,14 @@ def visualize_vad_norm(experiment):
     visualize_mesh(output_mesh_int[0], output_mesh_int[1], flip_axes=True)
 
 def visualize_interpolation_ad(experiment, index1, index2, a1=0.5, a2=0.5):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        index1: int (index of sample 1)
+        index2: int (index of sample 2)
+        a1: float (weight of the first sample)
+        a2: float (weight of the second sample)
+    """
     # Load model
     model = ThreeDEPNDecoder()
     model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location='cpu'))
@@ -77,6 +105,11 @@ def visualize_interpolation_ad(experiment, index1, index2, a1=0.5, a2=0.5):
     visualize_mesh(output_mesh_int[0], output_mesh_int[1], flip_axes=True)
 
 def visualize_latent_space(experiment, indicies):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        indicies: list[int] (indicies to visualize with a blue dot in the latent space)
+    """
     latent_vectors = torch.load(f"runs/{experiment}/latent_best.pt", map_location = 'cpu').detach().numpy()
     pca = PCA(n_components=2)
     pca.fit(latent_vectors)
@@ -97,6 +130,12 @@ def visualize_latent_space(experiment, indicies):
     plt.show()
 
 def visualize_interpolation_ad_steps(experiment, index1, index2):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        index1: int (index of sample 1)
+        index2: int (index of sample 2)
+    """
     a1 = 0.3
     a2 = 1 - a1
     while a1 < 0.8:

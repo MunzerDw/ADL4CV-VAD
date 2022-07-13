@@ -1,3 +1,9 @@
+##################################################
+
+# This file is used to generate the dataset splits
+
+##################################################
+
 from os import listdir
 from os.path import isfile, join
 import random

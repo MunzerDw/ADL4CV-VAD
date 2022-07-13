@@ -16,6 +16,12 @@ from data.shapenet import ShapeNet
 from chamferdist  import ChamferDistance
 
 def generate_samples(experiment, n, device=None):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        n: int (number of samples to generate)
+    output: Tensor n x 1 x 32 x 32 x 32 (generated samples)
+    """
     samples = []
     # Load model
     model = ThreeDEPNDecoder()
@@ -155,6 +161,13 @@ def _mmd(set1, set2):
     return torch.stack(distances)
 
 def min_sample(split, filter_class, sample, device=None):
+    """
+    input: 
+        split: string (dataset split)
+        filter_class: string (class of the dataset (airplane, chair, car, etc.))
+        sample: Tensor 32 x 32 x 32 (generated sample)
+    output: Tensor 32 x 32 x 32 (nearest neighbor sample)
+    """
     chamfer_dist = ChamferDistance()
     sample = convert_df_to_point_cloud(sample)
     sample = sample.to(device)
@@ -178,6 +191,15 @@ def min_sample(split, filter_class, sample, device=None):
     return final_sample, min_cf_distance
 
 def MMD(experiment, split, filter_class, n_samples, device=None):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        split: string (dataset split)
+        filter_class: string (class of the dataset (airplane, chair, car, etc.))
+        n_samples: int (number of samples to generate)
+        sample: Tensor 32 x 32 x 32 (generated sample)
+    output: int (mmd score)
+    """
     # generate n new samples
     samples = generate_samples(experiment, n_samples, device)
     samples = samples.squeeze(1)
@@ -195,6 +217,12 @@ def MMD(experiment, split, filter_class, n_samples, device=None):
     return mmd_values.mean(), mmd_values
 
 def TMD(experiment, n_samples, device=None):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        n_samples: int (number of samples to generate)
+    output: int (tmd score)
+    """
     # generate n new samples
     samples = generate_samples(experiment, n_samples, device)
     samples = samples.squeeze(1)
@@ -210,16 +238,21 @@ def TMD(experiment, n_samples, device=None):
     return sum(cd_distance_avgs), samples
             
 
-def IOU(experiment, split, filter_class, device):
+def IOU(experiment, split, filter_class, device=None):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        split: string (dataset split)
+        filter_class: string (class of the dataset (airplane, chair, car, etc.))
+    output: int (tmd score)
+    """
     model = ThreeDEPNDecoder()
     model.load_state_dict(torch.load(f"runs/{experiment}/model_best.ckpt", map_location=device))
     latent_vectors = torch.load(f"runs/{experiment}/latent_best_{split}.pt", map_location=device)
     dataset = ShapeNet(split, filter_class=filter_class)
     model.to(device)
-    # latent_vectors.to(device)
     sum1 = 0
     for index in tqdm(range(len(dataset))):
-        # idx = idx + 1
         sample = torch.tensor(dataset[index]['target_df']).to(device)
         sample[sample < 1] = 1
         sample[sample > 1] = 0
@@ -237,28 +270,40 @@ def IOU(experiment, split, filter_class, device):
 
     return sum1 / len(dataset)
     
-def ONE_NN(experiment, split, filter_class, device):
+def ONE_NN(experiment, split, filter_class, n, device=None):
+    """
+    input: 
+        experiment: string (name of the experiment)
+        split: string (dataset split)
+        filter_class: string (class of the dataset (airplane, chair, car, etc.))
+        n: int (number of samples to test with (taken from the reference set))
+    output: int (tmd score)
+    """
     chamfer_dist = ChamferDistance()
     # get test set
-    val = []
-    val_dataset = ShapeNet(split, filter_class=filter_class)
-    for data_dict in val_dataset:
+    data = []
+    dataset = ShapeNet(split, filter_class=filter_class)
+    for data_dict in dataset:
         target_df = torch.from_numpy(data_dict['target_df']).float().to(device)
-        val.append(target_df)
-    val = torch.stack(val).to(device)
-    print(f"number of validation set samples: {val.size()[0]}")
+        data.append(target_df)
+    if n is not None:
+        data = torch.stack(random.sample(data, k=n)).to(device)
+    else:
+        data = torch.stack(data).to(device)
+    print(f"number of reference set samples: {data.size()[0]}")
     # generate n new samples
     print('generating samples...')
-    samples = generate_samples(experiment, val.size()[0], device)
+    samples = generate_samples(experiment, data.size()[0], device)
     samples = samples.squeeze(1)
     print(f"number of generated samples: {samples.size()[0]}")
     # convert sets to pointclouds
-    print('Converting generated and validation sets to point clouds...')
+    print('Converting generated and reference sets to point clouds...')
     samples_point_clouds = convert_set_to_point_cloud(samples, count=2048, device=device)
-    val_point_clouds = convert_set_to_point_cloud(val, count=2048, device=device)
+    dataset_point_clouds = convert_set_to_point_cloud(data, count=2048, device=device)
 
     current_set_size = 0
     samples_same_set = 0
+    samples_same_set_interim = 0
     print('Calculating 1-NN generated set part:')
     samples_point_clouds_tqdm = tqdm(samples_point_clouds)
     for i, point_cloud1 in enumerate(samples_point_clouds_tqdm):
@@ -271,23 +316,27 @@ def ONE_NN(experiment, split, filter_class, device):
                 if cf_distance < min_cf_distance:
                     min_cf_distance = cf_distance
                     is_min_same_set = True
-        for iii, point_cloud3 in enumerate(val_point_clouds):
+        for iii, point_cloud3 in enumerate(dataset_point_clouds):
             cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud3.unsqueeze(0))
             if cf_distance < min_cf_distance:
                 min_cf_distance = cf_distance
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
-        samples_point_clouds_tqdm.set_postfix({'interim result': samples_same_set / current_set_size })
-        # print(f"Sample {i} done. {samples_same_set / current_set_size}")
+            samples_same_set_interim += 1
+        samples_point_clouds_tqdm.set_postfix({'interim result': samples_same_set_interim / current_set_size })
+        # print(f"Sample {i} done. {samples_same_set_interim / current_set_size}")
     
-    print('Calculating 1-NN validation set part:')
-    val_point_clouds_tqdm = tqdm(val_point_clouds)
+    samples_same_set_interim = 0
+    current_set_size = 0
+
+    print('Calculating 1-NN reference set part:')
+    val_point_clouds_tqdm = tqdm(dataset_point_clouds)
     for i, point_cloud1 in enumerate(val_point_clouds_tqdm):
         current_set_size += 1
         min_cf_distance = 1000
         is_min_same_set = False
-        for ii, point_cloud2 in enumerate(val_point_clouds):
+        for ii, point_cloud2 in enumerate(dataset_point_clouds):
             if i != ii:
                 cf_distance = chamfer_dist(point_cloud1.unsqueeze(0), point_cloud2.unsqueeze(0))
                 if cf_distance < min_cf_distance:
@@ -300,20 +349,22 @@ def ONE_NN(experiment, split, filter_class, device):
                 is_min_same_set = False
         if is_min_same_set:
             samples_same_set += 1
-        val_point_clouds_tqdm.set_postfix({'interim result': samples_same_set / current_set_size })
-        # print(f"Sample (val) {i} done. {samples_same_set / current_set_size}")
+            samples_same_set_interim += 1
+        val_point_clouds_tqdm.set_postfix({'interim result': samples_same_set_interim / current_set_size })
+        # print(f"Sample (val) {i} done. {samples_same_set_interim / current_set_size}")
     
-    return samples_same_set / (2 * val.size()[0])
+    return samples_same_set / (2 * data.size()[0])
 
 def parse_arguments():
     classes = ['airplane', 'car', 'chair', 'sofa', 'lamp', 'cabine', 'watercraft', 'table']
-    action = ['NNA', 'IOU']
+    action = ['1NN', 'IOU']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('experiment_name', type=str)
     parser.add_argument('filter_class', choices=classes, type=str)
     parser.add_argument('action', choices=action, type=str)
-    parser.add_argument('--split', choices=['train', 'val'], help='latent codes set to calculate IOU on', type=str, default='train')
+    parser.add_argument('--split', choices=['train', 'val', 'test'], help='latent codes set to calculate IOU on', type=str, required=True)
+    parser.add_argument('--n', type=int, help="number of random samples to get from the reference set to test the 1-NN score. if not set, the whole reference set will be used.", default=None)
     parser.add_argument('--cpu', help='disable cuda', action='store_true')
 
     args = parser.parse_args()
@@ -331,12 +382,12 @@ def main():
     else:
         print('Using CPU')
 
-    if  args['action'] == 'NNA':
-        print('Calculating NNA score...')
-        one_nn = ONE_NN(args['experiment_name'], 'val', args['filter_class'], device=device)
+    if  args['action'] == '1NN':
+        print(f"Calculating 1-NN score on {args['split']} split...")
+        one_nn = ONE_NN(args['experiment_name'], args['split'], args['filter_class'], n=args['n'], device=device)
         print(f'1-NN score: {one_nn}')
     if  args['action'] == 'IOU':
-        print('Calculating IOU score...')
+        print(f"Calculating IOU score on {args['split']} split...")
         iou = IOU(args['experiment_name'], args['split'], args['filter_class'], device=device)
         print(f'IOU score: {iou}')
     
@@ -350,6 +401,3 @@ if __name__ == '__main__':
             sys.exit(0)
         except:
             os._exit(0)
-
-# conda activate adl4cv
-# python scripts/evaluate.py car_vad car 

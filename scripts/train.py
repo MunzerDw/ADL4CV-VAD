@@ -249,6 +249,3 @@ if __name__ == '__main__':
             sys.exit(0)
         except:
             os._exit(0)
-
-# conda activate adl4cv
-# python scripts/train.py car_exp car 

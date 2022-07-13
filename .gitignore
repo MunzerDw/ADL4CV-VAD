@@ -1,7 +1,5 @@
 data/shapenet_dim32_df
 data/shapenet_dim32_df.zip
-logs/*
-runs/*
 .DS_Store
 ._*
 model/__pycache__/
