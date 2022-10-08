@@ -1,5 +1,5 @@
 # Generative Shape Synthesis with Variational Auto-Decoder
-This project is part of the 'Advanced Deep Learning for Computer Vision' course at the chair of Prof. Dr. Niessner at Technical University of Munich.
+This project is part of the 'Advanced Deep Learning for Computer Vision' course at the chair of Prof. Dr. Niessner at Technical University of Munich. You can view our final report [**here**](./docs/Generative_Shape_Synthesis_VAD.pdf).
 
 ## Requirements
 - Python 3
