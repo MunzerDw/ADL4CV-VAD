@@ -2,7 +2,7 @@
 
 <p align="center"><img width="700" src="./docs/network.png"></p>
 
-This project by Baris Zöngür and Munzer Dwedari is part of the 'Advanced Deep Learning for Computer Vision' course at the chair of Prof. Dr. Niessner at Technical University of Munich. You can view our final report [**here**](./docs/Generative_Shape_Synthesis_VAD.pdf).
+This project by Baris Zöngür and Munzer Dwedari is part of the 'Advanced Deep Learning for Computer Vision' course at the chair of Prof. Dr. Niessner at Technical University of Munich. Both team members contributed equally. You can view our final report [**here**](./docs/Generative_Shape_Synthesis_VAD.pdf).
 
 ## Requirements
 - Python 3
